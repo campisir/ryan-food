@@ -51,6 +51,29 @@ export async function POST({ request }: RequestEvent) {
         const { getSupabase } = await import('$lib/supabaseClient');
         const supabase = getSupabase();
         
+        // Test bucket access first
+        console.log('Testing bucket access...');
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+        if (bucketsError) {
+          console.error('Cannot access buckets:', bucketsError);
+          return new Response(`Storage access failed: ${bucketsError.message}`, { 
+            status: 500,
+            headers
+          });
+        }
+        console.log('Available buckets:', buckets?.map(b => b.name));
+        
+        // Check if our specific bucket exists
+        const foodPhotosBucket = buckets?.find(b => b.name === 'food-photos');
+        if (!foodPhotosBucket) {
+          console.error('food-photos bucket not found');
+          return new Response('food-photos bucket not found', { 
+            status: 500,
+            headers
+          });
+        }
+        console.log('food-photos bucket found:', foodPhotosBucket);
+        
         // Generate a unique filename
         const timestamp = Date.now();
         const fileName = `${timestamp}-${attachment1.name}`;
@@ -59,6 +82,8 @@ export async function POST({ request }: RequestEvent) {
         const fileBuffer = await attachment1.arrayBuffer();
         
         // Upload to Supabase Storage
+        console.log('Attempting to upload file:', fileName, 'Size:', fileBuffer.byteLength, 'Type:', attachment1.type);
+        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('food-photos')
           .upload(fileName, fileBuffer, {
@@ -67,12 +92,20 @@ export async function POST({ request }: RequestEvent) {
           });
         
         if (uploadError) {
-          console.error('Upload error:', uploadError);
-          return new Response('File upload failed', { 
+          console.error('Upload error details:', {
+            message: uploadError.message,
+            error: uploadError,
+            fileName,
+            fileSize: fileBuffer.byteLength,
+            contentType: attachment1.type
+          });
+          return new Response(`File upload failed: ${uploadError.message}`, { 
             status: 500,
             headers
           });
         }
+        
+        console.log('Upload successful:', uploadData);
         
         // Get the public URL for the uploaded file
         const { data: { publicUrl } } = supabase.storage
