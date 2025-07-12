@@ -1,18 +1,64 @@
 import type { RequestEvent } from '@sveltejs/kit';
 
+export async function GET() {
+  return new Response('Incoming email webhook endpoint. Use POST method.', { 
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain'
+    }
+  });
+}
+
 export async function POST({ request }: RequestEvent) {
-  const data = await request.json();
+  try {
+    // Mailgun sends form data, not JSON
+    const formData = await request.formData();
+    
+    // Log the incoming data for debugging
+    console.log('Received webhook from Mailgun');
+    
+    // Extract email data from Mailgun's format
+    const subject = formData.get('Subject') || formData.get('subject') || 'Untitled';
+    const attachmentCount = parseInt(formData.get('attachment-count') as string) || 0;
+    
+    let imageUrl = null;
+    
+    // Look for the first attachment
+    if (attachmentCount > 0) {
+      const attachment1 = formData.get('attachment-1');
+      if (attachment1 instanceof File) {
+        // You'll need to upload this to a storage service
+        // For now, we'll log that we received an attachment
+        console.log('Received attachment:', attachment1.name, attachment1.type);
+        
+        // TODO: Upload to Supabase Storage or another service
+        // For now, we'll skip posts with attachments until you set up file storage
+        return new Response('Attachment received but file storage not implemented yet', { status: 200 });
+      }
+    } else {
+      // No attachment, skip this email
+      console.log('No attachments found, skipping email');
+      return new Response('No attachments found', { status: 200 });
+    }
 
-  const subject = data.subject || 'Untitled';
-  const attachments = data.attachments || [];
+    const caption = subject as string;
 
-  const imageUrl = attachments[0]?.url; // Resend gives you a URL
-  const caption = subject;
+    const { getSupabase } = await import('$lib/supabaseClient');
+    const supabase = getSupabase();
 
-  const { getSupabase } = await import('$lib/supabaseClient');
-  const supabase = getSupabase();
+    const { error } = await supabase.from('posts').insert([{ 
+      image_url: imageUrl, 
+      caption 
+    }]);
 
-  await supabase.from('posts').insert([{ image_url: imageUrl, caption }]);
+    if (error) {
+      console.error('Supabase error:', error);
+      return new Response('Database error', { status: 500 });
+    }
 
-  return new Response('OK', { status: 200 });
+    return new Response('OK', { status: 200 });
+  } catch (error) {
+    console.error('API error:', error);
+    return new Response('Internal server error', { status: 500 });
+  }
 }
