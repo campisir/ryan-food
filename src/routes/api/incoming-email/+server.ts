@@ -45,16 +45,42 @@ export async function POST({ request }: RequestEvent) {
     if (attachmentCount > 0) {
       const attachment1 = formData.get('attachment-1');
       if (attachment1 instanceof File) {
-        // You'll need to upload this to a storage service
-        // For now, we'll log that we received an attachment
         console.log('Received attachment:', attachment1.name, attachment1.type);
         
-        // TODO: Upload to Supabase Storage or another service
-        // For now, we'll skip posts with attachments until you set up file storage
-        return new Response('Attachment received but file storage not implemented yet', { 
-          status: 200,
-          headers
-        });
+        // Get Supabase client
+        const { getSupabase } = await import('$lib/supabaseClient');
+        const supabase = getSupabase();
+        
+        // Generate a unique filename
+        const timestamp = Date.now();
+        const fileName = `${timestamp}-${attachment1.name}`;
+        
+        // Convert File to ArrayBuffer for upload
+        const fileBuffer = await attachment1.arrayBuffer();
+        
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('food-photos')
+          .upload(fileName, fileBuffer, {
+            contentType: attachment1.type,
+            upsert: false
+          });
+        
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          return new Response('File upload failed', { 
+            status: 500,
+            headers
+          });
+        }
+        
+        // Get the public URL for the uploaded file
+        const { data: { publicUrl } } = supabase.storage
+          .from('food-photos')
+          .getPublicUrl(fileName);
+        
+        imageUrl = publicUrl;
+        console.log('File uploaded successfully:', imageUrl);
       }
     } else {
       // No attachment, skip this email
@@ -67,20 +93,25 @@ export async function POST({ request }: RequestEvent) {
 
     const caption = subject as string;
 
-    const { getSupabase } = await import('$lib/supabaseClient');
-    const supabase = getSupabase();
+    // Only insert into database if we have an image URL
+    if (imageUrl) {
+      const { getSupabase } = await import('$lib/supabaseClient');
+      const supabase = getSupabase();
 
-    const { error } = await supabase.from('posts').insert([{ 
-      image_url: imageUrl, 
-      caption 
-    }]);
+      const { error } = await supabase.from('posts').insert([{ 
+        image_url: imageUrl, 
+        caption 
+      }]);
 
-    if (error) {
-      console.error('Supabase error:', error);
-      return new Response('Database error', { 
-        status: 500,
-        headers
-      });
+      if (error) {
+        console.error('Supabase error:', error);
+        return new Response('Database error', { 
+          status: 500,
+          headers
+        });
+      }
+
+      console.log('Post created successfully with image:', imageUrl);
     }
 
     return new Response('OK', { 
