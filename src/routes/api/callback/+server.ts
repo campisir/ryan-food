@@ -22,7 +22,7 @@ export async function OPTIONS() {
 
 export async function POST({ request }: RequestEvent) {
   try {
-    console.log("📬 Mailgun webhook called at /");
+    console.log("📬 Mailgun webhook called at /api/callback");
 
     // Mailgun sends form data, not JSON
     const formData = await request.formData();
