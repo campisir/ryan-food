@@ -56,6 +56,16 @@ export async function POST({ request }: RequestEvent) {
     // Check for commands at the beginning of the (remaining) subject
     const deleteMatch = remainingSubject.match(/^!deletepost\s+(\d+)/);
     const updateMatch = remainingSubject.match(/^!updatepost\s+(\d+)\s+\$(\w+)\s+(.+)/);
+    
+    // Collection commands
+    const addCollectionMatch = remainingSubject.match(/^!addcollection\s+"([^"]+)"\s*(.*)/);
+    const updateCollectionMatch = remainingSubject.match(/^!updatecollection\s+(\d+)\s+\$(\w+)\s+(.+)/);
+    const deleteCollectionMatch = remainingSubject.match(/^!deletecollection\s+(\d+)/);
+    
+    // Post collection commands
+    const addPostCollectionMatch = remainingSubject.match(/^!addpostcollection\s+(\d+)\s+(\d+)/);
+    const updatePostCollectionMatch = remainingSubject.match(/^!updatepostcollection\s+(\d+)\s+(\d+)\s+\$(\w+)\s+(.+)/);
+    const deletePostCollectionMatch = remainingSubject.match(/^!deletepostcollection\s+(\d+)\s+(\d+)/);
 
     // Get Supabase client for commands
     const { getSupabase } = await import('$lib/supabaseClient');
@@ -194,6 +204,283 @@ export async function POST({ request }: RequestEvent) {
         success: true,
         message: 'Post updated successfully',
         data: { postId, attribute, value, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle add collection command
+    if (addCollectionMatch) {
+      const collectionName = addCollectionMatch[1];
+      const collectionDescription = addCollectionMatch[2] || '';
+      
+      console.log('Add collection command detected:', { name: collectionName, description: collectionDescription });
+
+      const { data: newCollection, error: addError } = await supabase
+        .from('collections')
+        .insert([{ 
+          name: collectionName,
+          description: collectionDescription 
+        }])
+        .select()
+        .single();
+
+      if (addError) {
+        console.error('Add collection error:', addError);
+        return new Response(JSON.stringify({
+          error: 'Add collection failed',
+          details: {
+            message: addError.message,
+            error: addError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Collection added successfully:', newCollection);
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Collection added successfully',
+        data: { collection: newCollection, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle update collection command
+    if (updateCollectionMatch) {
+      const collectionId = parseInt(updateCollectionMatch[1]);
+      const attribute = updateCollectionMatch[2];
+      const value = updateCollectionMatch[3];
+      
+      console.log('Update collection command detected:', { collectionId, attribute, value });
+
+      // Validate attribute (only allow certain fields)
+      const allowedAttributes = ['name', 'description'];
+      if (!allowedAttributes.includes(attribute)) {
+        console.log('Invalid attribute for collection update:', attribute);
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Invalid attribute, no action taken',
+          timestamp: new Date().toISOString()
+        }), { 
+          status: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      // Update the collection
+      const updateData: any = {};
+      updateData[attribute] = value;
+
+      const { error: updateError } = await supabase
+        .from('collections')
+        .update(updateData)
+        .eq('id', collectionId);
+
+      if (updateError) {
+        console.error('Update collection error:', updateError);
+        return new Response(JSON.stringify({
+          error: 'Update collection failed',
+          details: {
+            message: updateError.message,
+            error: updateError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Collection updated successfully:', { collectionId, attribute, value });
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Collection updated successfully',
+        data: { collectionId, attribute, value, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle delete collection command
+    if (deleteCollectionMatch) {
+      const collectionId = parseInt(deleteCollectionMatch[1]);
+      console.log('Delete collection command detected for collection ID:', collectionId);
+
+      // First delete all post_collections entries for this collection
+      await supabase
+        .from('post_collections')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      // Then delete the collection
+      const { error: deleteError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (deleteError) {
+        console.error('Delete collection error:', deleteError);
+        return new Response(JSON.stringify({
+          error: 'Delete collection failed',
+          details: {
+            message: deleteError.message,
+            error: deleteError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Collection deleted successfully:', collectionId);
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Collection deleted successfully',
+        data: { collectionId, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle add post to collection command
+    if (addPostCollectionMatch) {
+      const postId = parseInt(addPostCollectionMatch[1]);
+      const collectionId = parseInt(addPostCollectionMatch[2]);
+      
+      console.log('Add post to collection command detected:', { postId, collectionId });
+
+      // Check if this relationship already exists
+      const { data: existing } = await supabase
+        .from('post_collections')
+        .select()
+        .eq('post_id', postId)
+        .eq('collection_id', collectionId)
+        .single();
+
+      if (existing) {
+        console.log('Post-collection relationship already exists');
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Post already in collection',
+          timestamp: new Date().toISOString()
+        }), { 
+          status: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      const { error: addError } = await supabase
+        .from('post_collections')
+        .insert([{ 
+          post_id: postId,
+          collection_id: collectionId 
+        }]);
+
+      if (addError) {
+        console.error('Add post to collection error:', addError);
+        return new Response(JSON.stringify({
+          error: 'Add post to collection failed',
+          details: {
+            message: addError.message,
+            error: addError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Post added to collection successfully:', { postId, collectionId });
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Post added to collection successfully',
+        data: { postId, collectionId, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle delete post from collection command
+    if (deletePostCollectionMatch) {
+      const postId = parseInt(deletePostCollectionMatch[1]);
+      const collectionId = parseInt(deletePostCollectionMatch[2]);
+      
+      console.log('Delete post from collection command detected:', { postId, collectionId });
+
+      const { error: deleteError } = await supabase
+        .from('post_collections')
+        .delete()
+        .eq('post_id', postId)
+        .eq('collection_id', collectionId);
+
+      if (deleteError) {
+        console.error('Delete post from collection error:', deleteError);
+        return new Response(JSON.stringify({
+          error: 'Delete post from collection failed',
+          details: {
+            message: deleteError.message,
+            error: deleteError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Post removed from collection successfully:', { postId, collectionId });
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Post removed from collection successfully',
+        data: { postId, collectionId, timestamp: new Date().toISOString() }
       }), { 
         status: 200,
         headers: {

@@ -8,6 +8,20 @@
   let mounted = false;
   import { onMount } from 'svelte';
   
+  // Post info modal state
+  let showPostInfo = false;
+  let selectedPost = null;
+  
+  function openPostInfo(post) {
+    selectedPost = post;
+    showPostInfo = true;
+  }
+  
+  function closePostInfo() {
+    showPostInfo = false;
+    selectedPost = null;
+  }
+  
   onMount(() => {
     mounted = true;
   });
@@ -50,6 +64,14 @@
           </div>
           <div class="flex-1">
             <p class="font-semibold text-gray-900">Ryan Campisi</p>
+            {#if post.location}
+              <p class="text-sm text-gray-500 flex items-center">
+                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                </svg>
+                {post.location}
+              </p>
+            {/if}
             {#if post.created_at}
               <p class="text-sm text-gray-500">
                 {new Date(post.created_at).toLocaleDateString('en-US', { 
@@ -62,7 +84,11 @@
               </p>
             {/if}
           </div>
-          <button class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100">
+          <button 
+            class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+            on:click={() => openPostInfo(post)}
+            title="View post info"
+          >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"></path>
             </svg>
@@ -131,4 +157,64 @@
       </p>
     </div>
   {/if}
+{/if}
+
+<!-- Post Info Modal -->
+{#if showPostInfo && selectedPost}
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" on:click={closePostInfo}>
+    <div class="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-hidden" on:click|stopPropagation>
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Post Information</h3>
+        <button 
+          class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+          on:click={closePostInfo}
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Modal Content -->
+      <div class="p-4 overflow-y-auto max-h-80">
+        <div class="space-y-3">
+          <!-- Quick Info -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <span class="text-sm font-medium text-gray-500">Post ID:</span>
+              <p class="text-gray-900">{selectedPost.id}</p>
+            </div>
+            <div>
+              <span class="text-sm font-medium text-gray-500">Created:</span>
+              <p class="text-gray-900">
+                {selectedPost.created_at ? new Date(selectedPost.created_at).toLocaleString() : 'Unknown'}
+              </p>
+            </div>
+            {#if selectedPost.location}
+              <div>
+                <span class="text-sm font-medium text-gray-500">Location:</span>
+                <p class="text-gray-900 flex items-center">
+                  <svg class="w-4 h-4 mr-1 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"></path>
+                  </svg>
+                  {selectedPost.location}
+                </p>
+              </div>
+            {/if}
+            <div>
+              <span class="text-sm font-medium text-gray-500">Caption:</span>
+              <p class="text-gray-900">{selectedPost.caption || 'No caption'}</p>
+            </div>
+          </div>
+          
+          <!-- JSON Data -->
+          <div class="border-t border-gray-200 pt-4">
+            <span class="text-sm font-medium text-gray-500 mb-2 block">Raw JSON Data:</span>
+            <pre class="bg-gray-50 p-3 rounded-lg text-xs overflow-x-auto border text-gray-800 font-mono">{JSON.stringify(selectedPost, null, 2)}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 {/if}
