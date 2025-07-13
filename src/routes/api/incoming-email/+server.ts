@@ -265,9 +265,11 @@ export async function POST({ request }: RequestEvent) {
         imageUrl = publicUrl;
         console.log('File uploaded successfully:', imageUrl);
       }
-    } else {
-      // No attachment, skip this email
-      console.log('No attachments found, skipping email');
+    }
+
+    // If no attachment and no commands, skip this email
+    if (!imageUrl) {
+      console.log('No attachments found and no commands, skipping email');
       return new Response(JSON.stringify({
         success: true,
         message: 'No attachments found',
