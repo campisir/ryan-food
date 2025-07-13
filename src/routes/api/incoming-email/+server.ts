@@ -67,6 +67,19 @@ export async function POST({ request }: RequestEvent) {
     const updatePostCollectionMatch = remainingSubject.match(/^!updatepostcollection\s+(\d+)\s+(\d+)\s+\$(\w+)\s+(.+)/);
     const deletePostCollectionMatch = remainingSubject.match(/^!deletepostcollection\s+(\d+)\s+(\d+)/);
 
+    // Debug logging for command detection
+    console.log('Command detection results:', {
+      deleteMatch: !!deleteMatch,
+      updateMatch: !!updateMatch,
+      addCollectionMatch: !!addCollectionMatch,
+      updateCollectionMatch: !!updateCollectionMatch,
+      deleteCollectionMatch: !!deleteCollectionMatch,
+      addPostCollectionMatch: !!addPostCollectionMatch,
+      updatePostCollectionMatch: !!updatePostCollectionMatch,
+      deletePostCollectionMatch: !!deletePostCollectionMatch,
+      remainingSubject
+    });
+
     // Get Supabase client for commands
     const { getSupabase } = await import('$lib/supabaseClient');
     const supabase = getSupabase();
@@ -556,10 +569,21 @@ export async function POST({ request }: RequestEvent) {
 
     // If no attachment and no commands, skip this email
     if (!imageUrl) {
-      console.log('No attachments found and no commands, skipping email');
+      const hasAnyCommand = deleteMatch || updateMatch || addCollectionMatch || updateCollectionMatch || 
+                           deleteCollectionMatch || addPostCollectionMatch || updatePostCollectionMatch || 
+                           deletePostCollectionMatch;
+      
+      console.log('No image URL found. Command detected:', hasAnyCommand);
+      console.log('Skipping email - no attachments and no valid commands detected');
+      
       return new Response(JSON.stringify({
         success: true,
-        message: 'No attachments found',
+        message: 'No attachments found and no valid commands detected',
+        debug: {
+          hasImage: !!imageUrl,
+          hasCommand: hasAnyCommand,
+          subject: remainingSubject
+        },
         timestamp: new Date().toISOString()
       }), { 
         status: 200,
