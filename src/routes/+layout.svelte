@@ -1,5 +1,6 @@
 <script>
   import '../app.css';
+  import { page } from '$app/stores';
 </script>
 
 <!-- Modern social media layout -->
@@ -27,6 +28,24 @@
           <span class="text-white font-bold text-sm">R</span>
         </div>
       </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-4xl mx-auto px-4">
+      <nav class="flex space-x-8 border-b border-gray-200" aria-label="Tabs">
+        <a 
+          href="/" 
+          class="py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {$page.url.pathname === '/' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+        >
+          📸 Feed
+        </a>
+        <a 
+          href="/collections" 
+          class="py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 {$page.url.pathname === '/collections' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+        >
+          📚 Collections
+        </a>
+      </nav>
     </div>
   </header>
 
