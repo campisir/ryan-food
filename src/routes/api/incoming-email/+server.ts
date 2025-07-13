@@ -39,6 +39,171 @@ export async function POST({ request }: RequestEvent) {
     const subject = formData.get('Subject') || formData.get('subject') || 'Untitled';
     const attachmentCount = parseInt(formData.get('attachment-count') as string) || 0;
     
+    console.log('Processing subject:', subject);
+
+    // Parse location from subject (format: @location@)
+    let location = null;
+    let remainingSubject = subject as string;
+    
+    const locationMatch = remainingSubject.match(/^@([^@]+)@/);
+    if (locationMatch) {
+      location = locationMatch[1];
+      remainingSubject = remainingSubject.replace(/^@[^@]+@\s*/, '');
+      console.log('Extracted location:', location);
+      console.log('Remaining subject after location:', remainingSubject);
+    }
+
+    // Check for commands at the beginning of the (remaining) subject
+    const deleteMatch = remainingSubject.match(/^!deletepost\s+(\d+)/);
+    const updateMatch = remainingSubject.match(/^!updatepost\s+(\d+)\s+\$(\w+)\s+(.+)/);
+
+    // Get Supabase client for commands
+    const { getSupabase } = await import('$lib/supabaseClient');
+    const supabase = getSupabase();
+
+    // Handle delete command
+    if (deleteMatch) {
+      const postId = parseInt(deleteMatch[1]);
+      console.log('Delete command detected for post ID:', postId);
+
+      // First, get the post to find the image URL for cleanup
+      const { data: postToDelete, error: fetchError } = await supabase
+        .from('posts')
+        .select('image_url')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError || !postToDelete) {
+        console.log('Post not found for deletion:', postId);
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Post not found, no action taken',
+          timestamp: new Date().toISOString()
+        }), { 
+          status: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      // Delete the post from database
+      const { error: deleteError } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        return new Response(JSON.stringify({
+          error: 'Delete failed',
+          details: {
+            message: deleteError.message,
+            error: deleteError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      // Optionally delete the image from storage
+      if (postToDelete.image_url) {
+        const fileName = postToDelete.image_url.split('/').pop();
+        if (fileName) {
+          await supabase.storage
+            .from('food-photos')
+            .remove([fileName]);
+          console.log('Deleted image file:', fileName);
+        }
+      }
+
+      console.log('Post deleted successfully:', postId);
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Post deleted successfully',
+        data: { postId, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // Handle update command
+    if (updateMatch) {
+      const postId = parseInt(updateMatch[1]);
+      const attribute = updateMatch[2];
+      const value = updateMatch[3];
+      
+      console.log('Update command detected:', { postId, attribute, value });
+
+      // Validate attribute (only allow certain fields)
+      const allowedAttributes = ['caption', 'location'];
+      if (!allowedAttributes.includes(attribute)) {
+        console.log('Invalid attribute for update:', attribute);
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Invalid attribute, no action taken',
+          timestamp: new Date().toISOString()
+        }), { 
+          status: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      // Update the post
+      const updateData: any = {};
+      updateData[attribute] = value;
+
+      const { error: updateError } = await supabase
+        .from('posts')
+        .update(updateData)
+        .eq('id', postId);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        return new Response(JSON.stringify({
+          error: 'Update failed',
+          details: {
+            message: updateError.message,
+            error: updateError,
+            timestamp: new Date().toISOString()
+          }
+        }), { 
+          status: 500,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      console.log('Post updated successfully:', { postId, attribute, value });
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Post updated successfully',
+        data: { postId, attribute, value, timestamp: new Date().toISOString() }
+      }), { 
+        status: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    // If no commands, proceed with normal post creation
     let imageUrl = null;
     
     // Look for the first attachment
@@ -116,16 +281,14 @@ export async function POST({ request }: RequestEvent) {
       });
     }
 
-    const caption = subject as string;
+    const caption = remainingSubject; // Use the remaining subject after location parsing
 
     // Only insert into database if we have an image URL
     if (imageUrl) {
-      const { getSupabase } = await import('$lib/supabaseClient');
-      const supabase = getSupabase();
-
       const { error } = await supabase.from('posts').insert([{ 
         image_url: imageUrl, 
-        caption 
+        caption,
+        location
       }]);
 
       if (error) {
@@ -146,7 +309,7 @@ export async function POST({ request }: RequestEvent) {
         });
       }
 
-      console.log('Post created successfully with image:', imageUrl);
+      console.log('Post created successfully:', { imageUrl, caption, location });
     }
 
     return new Response(JSON.stringify({
@@ -155,6 +318,7 @@ export async function POST({ request }: RequestEvent) {
       data: {
         imageUrl,
         caption,
+        location,
         timestamp: new Date().toISOString()
       }
     }), { 
