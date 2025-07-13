@@ -58,7 +58,7 @@ export async function POST({ request }: RequestEvent) {
     const updateMatch = remainingSubject.match(/^!updatepost\s+(\d+)\s+\$(\w+)\s+(.+)/);
     
     // Collection commands
-    const addCollectionMatch = remainingSubject.match(/^!addcollection\s+"([^"]+)"(?:\s+(.*))?/);
+    const addCollectionMatch = remainingSubject.match(/^!addcollection\s+\*([^*]+)\*(?:\s+(.*))?/);
     const updateCollectionMatch = remainingSubject.match(/^!updatecollection\s+(\d+)\s+\$(\w+)\s+(.+)/);
     const deleteCollectionMatch = remainingSubject.match(/^!deletecollection\s+(\d+)/);
     
@@ -70,20 +70,20 @@ export async function POST({ request }: RequestEvent) {
     // Debug the add collection regex specifically
     console.log('Testing addcollection regex:');
     console.log('Subject to test:', JSON.stringify(remainingSubject));
-    console.log('Regex pattern:', '/^!addcollection\\s+"([^"]+)"(?:\\s+(.*))?/');
+    console.log('Regex pattern:', '/^!addcollection\\s+\\*([^*]+)\\*(?:\\s+(.*))?/');
     
     // Test individual parts
     const startsWithCommand = remainingSubject.startsWith('!addcollection');
-    const hasQuotes = remainingSubject.includes('"');
+    const hasAsterisks = remainingSubject.includes('*');
     console.log('Starts with !addcollection:', startsWithCommand);
-    console.log('Contains quotes:', hasQuotes);
+    console.log('Contains asterisks *:', hasAsterisks);
     
     // Try simpler regex first
     const simpleMatch = remainingSubject.match(/!addcollection/);
     console.log('Simple command match:', !!simpleMatch);
     
     // Try without anchoring
-    const unanchoredMatch = remainingSubject.match(/!addcollection\s+"([^"]+)"(?:\s+(.*))?/);
+    const unanchoredMatch = remainingSubject.match(/!addcollection\s+\*([^*]+)\*(?:\s+(.*))?/);
     console.log('Unanchored match:', !!unanchoredMatch);
 
     // Debug logging for command detection
