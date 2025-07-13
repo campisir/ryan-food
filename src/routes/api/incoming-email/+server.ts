@@ -58,7 +58,7 @@ export async function POST({ request }: RequestEvent) {
     const updateMatch = remainingSubject.match(/^!updatepost\s+(\d+)\s+\$(\w+)\s+(.+)/);
     
     // Collection commands
-    const addCollectionMatch = remainingSubject.match(/^!addcollection\s+"([^"]+)"\s*(.*)/);
+    const addCollectionMatch = remainingSubject.match(/^!addcollection\s+"([^"]+)"(?:\s+(.*))?/);
     const updateCollectionMatch = remainingSubject.match(/^!updatecollection\s+(\d+)\s+\$(\w+)\s+(.+)/);
     const deleteCollectionMatch = remainingSubject.match(/^!deletecollection\s+(\d+)/);
     
