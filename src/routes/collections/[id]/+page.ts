@@ -10,10 +10,19 @@ export const load: PageLoad = async ({ params }) => {
     throw error(404, 'Collection not found');
   }
   
-  // Load collection details
+  // Load collection details with profile information
   const { data: collection, error: collectionError } = await supabase
     .from('collections')
-    .select('*')
+    .select(`
+      *,
+      profiles (
+        id,
+        display_name,
+        username,
+        avatar_url,
+        bio
+      )
+    `)
     .eq('id', collectionId)
     .single();
 
@@ -21,7 +30,7 @@ export const load: PageLoad = async ({ params }) => {
     throw error(404, 'Collection not found');
   }
 
-  // Load posts in this collection
+  // Load posts in this collection with profile information
   const { data: postCollections, error: postsError } = await supabase
     .from('post_collections')
     .select(`
@@ -30,7 +39,15 @@ export const load: PageLoad = async ({ params }) => {
         image_url,
         caption,
         location,
-        created_at
+        created_at,
+        user_id,
+        profiles (
+          id,
+          display_name,
+          username,
+          avatar_url,
+          bio
+        )
       )
     `)
     .eq('collection_id', collectionId);

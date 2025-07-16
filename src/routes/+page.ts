@@ -5,10 +5,19 @@ export async function load() {
     const supabase = getSupabase();
     const postsPerPage = 10; // Load 10 posts at a time
     
-    // Get posts with pagination
+    // Get posts with pagination and profile information
     const { data: posts, error } = await supabase
       .from('posts')
-      .select('*')
+      .select(`
+        *,
+        profiles (
+          id,
+          display_name,
+          username,
+          avatar_url,
+          bio
+        )
+      `)
       .order('created_at', { ascending: false })
       .limit(postsPerPage);
 

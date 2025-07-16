@@ -59,11 +59,19 @@
       >
         <!-- Post header -->
         <div class="p-4 flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
-            <span class="text-white font-bold text-sm">R</span>
+          <div class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
+            {#if post.profiles?.avatar_url}
+              <img src={post.profiles.avatar_url} alt={post.profiles.display_name || post.profiles.username || 'User'} class="w-full h-full object-cover" />
+            {:else}
+              <span class="text-white font-bold text-sm">
+                {(post.profiles?.display_name || post.profiles?.username || 'U')[0].toUpperCase()}
+              </span>
+            {/if}
           </div>
           <div class="flex-1">
-            <p class="font-semibold text-gray-900">Ryan Campisi</p>
+            <p class="font-semibold text-gray-900">
+              {post.profiles?.display_name || post.profiles?.username || 'Anonymous User'}
+            </p>
             {#if post.location}
               <p class="text-sm text-gray-500 flex items-center">
                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -136,7 +144,9 @@
           {#if post.caption}
             <div class="space-y-2">
               <p class="text-gray-800 leading-relaxed">
-                <span class="font-semibold text-gray-900">Ryan Campisi</span>
+                <span class="font-semibold text-gray-900">
+                  {post.profiles?.display_name || post.profiles?.username || 'Unknown User'}
+                </span>
                 {post.caption}
               </p>
             </div>

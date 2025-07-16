@@ -126,6 +126,23 @@
             {#if collection.description}
               <p class="text-gray-600 text-sm mb-2">{collection.description}</p>
             {/if}
+            
+            <!-- Creator Info -->
+            <div class="flex items-center space-x-2 mb-2">
+              <div class="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
+                {#if collection.profiles?.avatar_url}
+                  <img src={collection.profiles.avatar_url} alt={collection.profiles.display_name || collection.profiles.username || 'User'} class="w-full h-full object-cover" />
+                {:else}
+                  <span class="text-white font-bold text-xs">
+                    {(collection.profiles?.display_name || collection.profiles?.username || 'U')[0].toUpperCase()}
+                  </span>
+                {/if}
+              </div>
+              <span class="text-sm text-gray-600">
+                by {collection.profiles?.display_name || collection.profiles?.username || 'Anonymous User'}
+              </span>
+            </div>
+            
             <div class="flex items-center justify-between text-sm text-gray-500">
               <span>{collection.postCount} {collection.postCount === 1 ? 'photo' : 'photos'}</span>
               <span>ID: {collection.id}</span>

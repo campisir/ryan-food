@@ -4,11 +4,18 @@ import { getSupabase } from '$lib/supabaseClient';
 export const load: PageLoad = async () => {
   const supabase = getSupabase();
   
-  // Load collections with post count
+  // Load collections with post count and profile information
   const { data: collections, error } = await supabase
     .from('collections')
     .select(`
       *,
+      profiles (
+        id,
+        display_name,
+        username,
+        avatar_url,
+        bio
+      ),
       post_collections(
         posts(*)
       )
