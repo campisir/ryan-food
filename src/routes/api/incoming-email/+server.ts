@@ -1,4 +1,42 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+
+// Function to send email response via Mailgun
+async function sendEmailResponse(to: string, subject: string, message: string) {
+  const MAILGUN_API_KEY = env.MAILGUN_API_KEY;
+  const MAILGUN_DOMAIN = env.MAILGUN_DOMAIN;
+  const FROM_EMAIL = env.FROM_EMAIL || `noreply@${MAILGUN_DOMAIN}`;
+
+  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN) {
+    console.warn('Mailgun credentials not configured - skipping email response');
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('from', FROM_EMAIL);
+    formData.append('to', to);
+    formData.append('subject', subject);
+    formData.append('text', message);
+
+    const response = await fetch(`https://api.mailgun.net/v3/${MAILGUN_DOMAIN}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(`api:${MAILGUN_API_KEY}`)}`
+      },
+      body: formData
+    });
+
+    if (response.ok) {
+      console.log('Email response sent successfully to:', to);
+    } else {
+      const error = await response.text();
+      console.error('Failed to send email response:', error);
+    }
+  } catch (error) {
+    console.error('Error sending email response:', error);
+  }
+}
 
 export async function GET() {
   return new Response('Incoming email webhook endpoint. Use POST method.', { 
@@ -37,9 +75,10 @@ export async function POST({ request }: RequestEvent) {
     
     // Extract email data from Mailgun's format
     const subject = formData.get('Subject') || formData.get('subject') || 'Untitled';
+    const senderEmail = formData.get('From') || formData.get('from') || formData.get('sender');
     const attachmentCount = parseInt(formData.get('attachment-count') as string) || 0;
     
-    console.log('Processing subject:', subject);
+    console.log('Processing email from:', senderEmail, 'subject:', subject);
 
     // Parse location from subject (format: @location@)
     let location = null;
@@ -117,6 +156,16 @@ export async function POST({ request }: RequestEvent) {
 
       if (fetchError || !postToDelete) {
         console.log('Post not found for deletion:', postId);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Delete Failed - Post Not Found',
+            `Hello!\n\nThe delete command for post ID ${postId} could not be completed because the post was not found.\n\nPlease check the post ID and try again.\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           success: true,
           message: 'Post not found, no action taken',
@@ -138,6 +187,16 @@ export async function POST({ request }: RequestEvent) {
 
       if (deleteError) {
         console.error('Delete error:', deleteError);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Delete Failed - Database Error',
+            `Hello!\n\nThe delete command for post ID ${postId} failed due to a database error.\n\nError: ${deleteError.message}\n\nPlease try again later or contact support.\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           error: 'Delete failed',
           details: {
@@ -166,6 +225,16 @@ export async function POST({ request }: RequestEvent) {
       }
 
       console.log('Post deleted successfully:', postId);
+      
+      // Send success response email
+      if (senderEmail) {
+        await sendEmailResponse(
+          senderEmail as string,
+          '✅ Post Deleted Successfully',
+          `Hello!\n\nYour delete command was successful!\n\n📋 Details:\n• Post ID: ${postId}\n• Action: Deleted\n• Time: ${new Date().toLocaleString()}\n\nThe post and its associated image have been permanently removed from ryan.food.\n\nBest regards,\nryan.food`
+        );
+      }
+      
       return new Response(JSON.stringify({
         success: true,
         message: 'Post deleted successfully',
@@ -191,6 +260,16 @@ export async function POST({ request }: RequestEvent) {
       const allowedAttributes = ['caption', 'location'];
       if (!allowedAttributes.includes(attribute)) {
         console.log('Invalid attribute for update:', attribute);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Update Failed - Invalid Attribute',
+            `Hello!\n\nThe update command for post ID ${postId} failed because "${attribute}" is not a valid attribute.\n\nAllowed attributes: ${allowedAttributes.join(', ')}\n\nExample: !updatepost ${postId} $caption New caption text\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           success: true,
           message: 'Invalid attribute, no action taken',
@@ -215,6 +294,16 @@ export async function POST({ request }: RequestEvent) {
 
       if (updateError) {
         console.error('Update error:', updateError);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Update Failed - Database Error',
+            `Hello!\n\nThe update command for post ID ${postId} failed due to a database error.\n\nError: ${updateError.message}\n\nPlease try again later or contact support.\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           error: 'Update failed',
           details: {
@@ -232,6 +321,16 @@ export async function POST({ request }: RequestEvent) {
       }
 
       console.log('Post updated successfully:', { postId, attribute, value });
+      
+      // Send success response email
+      if (senderEmail) {
+        await sendEmailResponse(
+          senderEmail as string,
+          '✅ Post Updated Successfully',
+          `Hello!\n\nYour update command was successful!\n\n📋 Details:\n• Post ID: ${postId}\n• Updated: ${attribute}\n• New value: ${value}\n• Time: ${new Date().toLocaleString()}\n\nYour post has been updated on ryan.food.\n\nBest regards,\nryan.food`
+        );
+      }
+      
       return new Response(JSON.stringify({
         success: true,
         message: 'Post updated successfully',
@@ -263,6 +362,16 @@ export async function POST({ request }: RequestEvent) {
 
       if (addError) {
         console.error('Add collection error:', addError);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Collection Creation Failed',
+            `Hello!\n\nThe command to create collection "${collectionName}" failed due to a database error.\n\nError: ${addError.message}\n\nPlease try again later or contact support.\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           error: 'Add collection failed',
           details: {
@@ -280,6 +389,16 @@ export async function POST({ request }: RequestEvent) {
       }
 
       console.log('Collection added successfully:', newCollection);
+      
+      // Send success response email
+      if (senderEmail) {
+        await sendEmailResponse(
+          senderEmail as string,
+          '✅ Collection Created Successfully',
+          `Hello!\n\nYour new collection has been created!\n\n📚 Collection Details:\n• Name: ${collectionName}\n• Description: ${collectionDescription || 'None'}\n• Collection ID: ${newCollection.id}\n• Created: ${new Date().toLocaleString()}\n\nYou can now add posts to this collection using:\n!addpostcollection POST_ID ${newCollection.id}\n\nView your collection at: https://ryan.food/collections/${newCollection.id}\n\nBest regards,\nryan.food`
+        );
+      }
+      
       return new Response(JSON.stringify({
         success: true,
         message: 'Collection added successfully',
@@ -625,6 +744,16 @@ export async function POST({ request }: RequestEvent) {
 
       if (error) {
         console.error('Supabase error:', error);
+        
+        // Send error response email
+        if (senderEmail) {
+          await sendEmailResponse(
+            senderEmail as string,
+            '❌ Post Creation Failed',
+            `Hello!\n\nYour post could not be created due to a database error.\n\nError: ${error.message}\n\nThe image was uploaded successfully, but we couldn't save the post details. Please try again later or contact support.\n\nBest regards,\nryan.food`
+          );
+        }
+        
         return new Response(JSON.stringify({
           error: 'Database error',
           details: {
@@ -642,6 +771,15 @@ export async function POST({ request }: RequestEvent) {
       }
 
       console.log('Post created successfully:', { imageUrl, caption, location });
+      
+      // Send success response email for new post
+      if (senderEmail) {
+        await sendEmailResponse(
+          senderEmail as string,
+          '✅ New Post Created Successfully!',
+          `Hello!\n\nYour new post has been created successfully on ryan.food!\n\n📸 Post Details:\n• Caption: ${caption || 'None'}\n• Location: ${location || 'None'}\n• Image: Uploaded successfully\n• Created: ${new Date().toLocaleString()}\n\nYour post is now live and visible on ryan.food.\n\nBest regards,\nryan.food`
+        );
+      }
     }
 
     return new Response(JSON.stringify({
