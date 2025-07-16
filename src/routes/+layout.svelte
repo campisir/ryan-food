@@ -1,12 +1,27 @@
 <script>
   import '../app.css';
   import { page } from '$app/stores';
+  import { loading } from '$lib/auth';
+  import AuthButton from '$lib/components/AuthButton.svelte';
+
+  export let data;
 </script>
 
 <!-- Modern social media layout -->
 <div class="min-h-screen bg-gray-50">
-  <!-- Header -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+  {#if $loading}
+    <!-- Full-screen loading overlay -->
+    <div class="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">
+      <div class="flex flex-col items-center space-y-4">
+        <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
+          <span class="text-white font-bold text-lg">🍽️</span>
+        </div>
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+      </div>
+    </div>
+  {:else}
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center space-x-2">
@@ -19,15 +34,7 @@
       </div>
 
       <!-- User info -->
-      <div class="flex items-center space-x-3">
-        <div class="hidden sm:block text-right">
-          <p class="text-sm font-medium text-gray-900">Ryan Campisi</p>
-          <p class="text-xs text-gray-500">Food Explorer</p>
-        </div>
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
-          <span class="text-white font-bold text-sm">R</span>
-        </div>
-      </div>
+      <AuthButton />
     </div>
 
     <!-- Navigation Tabs -->
@@ -62,4 +69,5 @@
       </p>
     </div>
   </footer>
+  {/if}
 </div>

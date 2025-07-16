@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { env } from '$env/dynamic/public'
+import { browser } from '$app/environment'
 
 let supabaseInstance: SupabaseClient | null = null
 
@@ -16,7 +17,14 @@ export function getSupabase(): SupabaseClient {
       throw new Error('PUBLIC_SUPABASE_ANON_KEY is required')
     }
 
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: browser,
+        flowType: 'pkce'
+      }
+    })
   }
 
   return supabaseInstance
