@@ -13,8 +13,8 @@
     <!-- Full-screen loading overlay -->
     <div class="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">
       <div class="flex flex-col items-center space-y-4">
-        <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
-          <span class="text-white font-bold text-lg">🍽️</span>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center">
+          <img src="/favicon.ico" alt="ryan.food" class="w-8 h-8 rounded-lg" />
         </div>
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
       </div>
@@ -25,8 +25,8 @@
     <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
       <!-- Logo -->
       <div class="flex items-center space-x-2">
-        <div class="w-8 h-8 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex items-center justify-center">
-          <span class="text-white font-bold text-lg">🍽️</span>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center">
+          <img src="/favicon.ico" alt="ryan.food" class="w-8 h-8 rounded-lg" />
         </div>
         <h1 class="text-xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
           ryan.food
